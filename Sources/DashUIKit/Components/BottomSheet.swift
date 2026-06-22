@@ -13,7 +13,9 @@ public struct BottomSheet<Content: View>: View {
     public var onBackButtonPressed: (() -> Void)? = nil
     /// `true` (default) — greedy: content fills the sheet (use with an explicit detent or a
     /// `.large`/`.medium` detent). `false` — natural height: pair with `.selfSizingSheet()` so
-    /// the sheet snaps to its content.
+    /// the sheet snaps to its content. Prefer `BottomSheet.selfSizing(...)` as the entry point
+    /// when natural sizing is needed — it guarantees `fillsHeight: false` and the modifier are
+    /// always applied together.
     public var fillsHeight: Bool = true
     @ViewBuilder public var content: () -> Content
 
@@ -122,13 +124,74 @@ public struct BottomSheetHeightPreferenceKey: PreferenceKey {
 }
 
 @available(iOS 14, macOS 11, *)
+public extension BottomSheet {
+    /// Self-sizing bottom sheet: builds with `fillsHeight: false` and applies
+    /// `.selfSizingSheet(...)` so the two can't be mismatched. Drop the result
+    /// directly into a `.sheet { }`.
+    static func selfSizing(
+        title: String = "",
+        showBackButton: Binding<Bool>,
+        onBackButtonPressed: (() -> Void)? = nil,
+        fallback: CGFloat = 0,
+        maxHeightFraction: CGFloat = 0.95,
+        cornerRadius: CGFloat? = nil,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        BottomSheet(
+            title: title,
+            showBackButton: showBackButton,
+            onBackButtonPressed: onBackButtonPressed,
+            fillsHeight: false,
+            content: content
+        )
+        .selfSizingSheet(fallback: fallback, maxHeightFraction: maxHeightFraction, cornerRadius: cornerRadius)
+    }
+}
+
+@available(iOS 14, macOS 11, *)
 public extension View {
     /// Sizes a `BottomSheet` (built with `fillsHeight: false`) to its content's natural height —
     /// no hardcoded `.height(...)` needed. On iOS < 16 it is a no-op.
+    ///
+    /// The content is measured directly (via a `GeometryReader` background), so it does not rely
+    /// on any published preference — it self-sizes whatever finite-height view it wraps. The
+    /// measured view must have a finite intrinsic height (no greedy `Spacer` / `maxHeight: .infinity`),
+    /// otherwise it expands to fill the offered space and the measurement is wrong — see
+    /// `BottomSheet(fillsHeight: false)`.
+    ///
+    /// - Parameters:
+    ///   - fallback: Height used before the first measurement (avoids a `.medium` flash).
+    ///   - maxHeightFraction: Caps the sheet at this fraction of the window height; taller content
+    ///     is clipped, so wrap it in a `ScrollView`.
+    ///   - cornerRadius: Optional corner radius applied via `presentationCornerRadius` on
+    ///     iOS 16.4..<26 (iOS 26+ keeps the system corner styling). When provided, the sheet
+    ///     background is also filled so the bottom safe-area strip matches the content.
     @ViewBuilder
-    func selfSizingSheet(fallback: CGFloat = 0, maxHeightFraction: CGFloat = 0.95) -> some View {
+    func selfSizingSheet(
+        fallback: CGFloat = 0,
+        maxHeightFraction: CGFloat = 0.95,
+        cornerRadius: CGFloat? = nil
+    ) -> some View {
         if #available(iOS 16.0, macOS 13.0, *) {
-            modifier(SelfSizingSheetModifier(fallback: fallback, maxHeightFraction: maxHeightFraction))
+            let modified = modifier(SelfSizingSheetModifier(fallback: fallback, maxHeightFraction: maxHeightFraction))
+            #if os(iOS)
+            if #available(iOS 16.4, *), let cornerRadius {
+                if #unavailable(iOS 26.0) {
+                    // iOS 16.4..<26: apply the custom corner radius + fill the sheet background.
+                    modified
+                        .presentationCornerRadius(cornerRadius)
+                        .presentationBackground(Color.dash.primaryBackground)
+                } else {
+                    // iOS 26+: keep the system corner styling, just fill the background.
+                    modified
+                        .presentationBackground(Color.dash.primaryBackground)
+                }
+            } else {
+                modified
+            }
+            #else
+            modified
+            #endif
         } else {
             self
         }
@@ -142,20 +205,42 @@ private struct SelfSizingSheetModifier: ViewModifier {
     @State private var measured: CGFloat = 0
 
     func body(content: Content) -> some View {
-        let resolved = min(measured > 0 ? measured : fallback, maxSheetHeight)
-
+        // Measure the wrapped content directly — reliable on first layout (`onAppear`) and on
+        // changes, without depending on a published preference.
         content
-            .onPreferenceChange(BottomSheetHeightPreferenceKey.self) { measured = $0 }
-            // Before the first measurement (and when nothing is provided) fall back to .medium so
-            // the sheet is never given an invalid 0-height detent.
-            .presentationDetents(resolved > 0 ? [.height(resolved)] : [.medium])
+            .background(
+                GeometryReader { proxy in
+                    Color.clear
+                        .onAppear { update(proxy.size.height) }
+                        .onChange(of: proxy.size.height) { update($0) }
+                }
+            )
+            .presentationDetents(detents)
+            .presentationDragIndicator(.hidden)
+    }
+
+    private var detents: Set<PresentationDetent> {
+        let resolved = min(measured > 0 ? measured : fallback, maxSheetHeight)
+        // Before the first measurement (and when no fallback is provided) use .medium so the
+        // sheet is never given an invalid 0-height detent.
+        return resolved > 0 ? [.height(resolved)] : [.medium]
+    }
+
+    private func update(_ newHeight: CGFloat) {
+        guard newHeight > 0, newHeight != measured else { return }
+        measured = newHeight
     }
 
     private var maxSheetHeight: CGFloat {
         #if canImport(UIKit)
-        UIScreen.main.bounds.height * maxHeightFraction
+        let windowHeight = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }?
+            .keyWindow?.bounds.height
+        let height = windowHeight ?? UIScreen.main.bounds.height
+        return height * maxHeightFraction
         #else
-        .greatestFiniteMagnitude
+        return .greatestFiniteMagnitude
         #endif
     }
 }

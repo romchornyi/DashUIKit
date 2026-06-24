@@ -316,7 +316,7 @@ private struct DashButtonStylePreview: View {
 #Preview("Example") {
     VStack {
         DashButton(
-            text: NSLocalizedString("Withdraw funds", comment: "CrowdNode"),
+            text: "Withdraw funds",
             fillsWidth: true,
             size: .large,
             style: .filledBlue,
@@ -324,7 +324,7 @@ private struct DashButtonStylePreview: View {
         )
 
         DashButton(
-            text: NSLocalizedString("Withdraw funds", comment: "CrowdNode"),
+            text: "Withdraw funds",
             fillsWidth: true,
             size: .large,
             style: .strokeGray,

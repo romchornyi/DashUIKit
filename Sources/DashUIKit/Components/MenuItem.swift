@@ -71,7 +71,7 @@ public struct MenuItem: View {
             Image(dash: icon)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 24, height: 24)
+                .frame(width: 30, height: 30)
         }
     }
 

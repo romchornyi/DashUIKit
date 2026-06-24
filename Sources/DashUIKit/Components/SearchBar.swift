@@ -15,7 +15,6 @@
 //  limitations under the License.
 //
 
-#if canImport(UIKit)
 import SwiftUI
 
 // MARK: - Public shell (iOS 14+)
@@ -109,8 +108,11 @@ private struct SearchBarFocused: View {
                         .resizable()
                         .scaledToFit()
                         .frame(maxHeight: 15)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
             )
+            .accessibilityLabel(Text(NSLocalizedString("Clear", bundle: .module, comment: "DashUIKit")))
         }
     }
 
@@ -201,8 +203,11 @@ private struct SearchBarLegacy: View {
                         .resizable()
                         .scaledToFit()
                         .frame(maxHeight: 15)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
             )
+            .accessibilityLabel(Text(NSLocalizedString("Clear", bundle: .module, comment: "DashUIKit")))
         }
     }
 }
@@ -219,4 +224,3 @@ private struct SearchBarLegacy: View {
 }
 
 #endif
-#endif // canImport(UIKit)

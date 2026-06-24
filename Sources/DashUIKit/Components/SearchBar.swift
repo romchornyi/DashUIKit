@@ -15,6 +15,7 @@
 //  limitations under the License.
 //
 
+#if canImport(UIKit)
 import SwiftUI
 
 // MARK: - Public shell (iOS 14+)
@@ -223,4 +224,5 @@ private struct SearchBarLegacy: View {
         .padding()
 }
 
-#endif
+#endif // DEBUG
+#endif // canImport(UIKit)

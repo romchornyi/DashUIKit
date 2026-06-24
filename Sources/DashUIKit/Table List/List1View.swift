@@ -31,11 +31,11 @@ public struct List1View: View {
     public var body: some View {
         HStack {
             Text(label)
-                .font(Font.dash.subheadMedium)
+                .dashFont(.subheadMedium)
                 .foregroundColor(Color.dash.tertiaryText)
 
             Text(value)
-                .font(Font.dash.subhead)
+                .dashFont(.subhead)
                 .foregroundColor(Color.dash.primaryText)
                 .multilineTextAlignment(.trailing)
                 .frame(maxWidth: .infinity, alignment: .trailing)

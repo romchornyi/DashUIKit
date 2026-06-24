@@ -70,12 +70,12 @@ public struct CoinSelector<Icon: View>: View {
     private var info: some View {
         VStack(alignment: .leading, spacing: CoinSelectorLayout.textSpacing) {
             Text(name)
-                .font(Font.dash.subheadMedium)
+                .dashFont(.subheadMedium)
                 .foregroundColor(Color.dash.primaryText)
                 .lineLimit(1)
                 .truncationMode(.tail)
             Text(code)
-                .font(Font.dash.footnote)
+                .dashFont(.footnote)
                 .foregroundColor(Color.dash.tertiaryText)
                 .lineLimit(1)
         }
@@ -89,7 +89,7 @@ public struct CoinSelector<Icon: View>: View {
             haltedLabel
         case .price(let value):
             Text(value)
-                .font(Font.dash.caption1)
+                .dashFont(.caption1)
                 .foregroundColor(Color.dash.tertiaryText)
         case .none:
             EmptyView()
@@ -98,7 +98,7 @@ public struct CoinSelector<Icon: View>: View {
 
     private var haltedLabel: some View {
         Text(NSLocalizedString("halted", bundle: .module, comment: "DashUIKit"))
-            .font(Font.dash.caption1)
+            .dashFont(.caption1)
             .foregroundColor(Color.dash.tertiaryText)
             .padding(.horizontal, CoinSelectorLayout.badgeHPadding)
             .padding(.vertical, CoinSelectorLayout.badgeVPadding)

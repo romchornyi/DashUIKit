@@ -26,6 +26,7 @@ struct BackgroundBlurView: UIViewRepresentable {
     func makeUIView(context: Context) -> UIVisualEffectView {
         UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
     }
+
     func updateUIView(_ uiView: UIVisualEffectView, context: Context) {}
 }
 
@@ -40,11 +41,14 @@ struct BackgroundBlurView: UIViewRepresentable {
 ///   toast-error.imageset
 ///   toast-success.imageset
 ///   toast-copied.imageset
-///   toast-loading.imageset   (optional — `loading` uses a spinner by default)
+///   toast-loading.imageset   (optional — `loading` uses `LoadingSpinner`)
 @available(iOS 14, macOS 11, *)
 public enum ToastStyle {
     case warning, info, error, success, copied, loading
 
+    /// Placeholder asset names — REAL ICONS TO BE ADDED by the user into
+    /// `Media.xcassets/Icons & Illustrations/Toast/`.
+    /// (`loading` renders the `LoadingSpinner` instead — see `Toast.leadingIcon`.)
     var iconName: String {
         switch self {
         case .warning: return "toast-warning"
@@ -77,29 +81,28 @@ public struct Toast: View {
     }
 
     public var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: 8) {
+            HStack(alignment: .top, spacing: 0) {
                 leadingIcon
                     .frame(width: 24, height: 24)
 
                 Text(message)
-                    .font(Font.dash.subhead)
+                    .dashFont(.footnoteMedium)
                     .foregroundColor(Color.dash.toastText)
-                    .padding(.vertical, 2)
-
-                Spacer(minLength: 0)
+                    .padding(.vertical, 3)
+                    .padding(.leading, 8)
             }
+            .padding(.trailing, 8)
 
-            if let onDismiss = onDismiss {
+            if let onDismiss {
+                Spacer(minLength: 10)
+
                 Button(action: onDismiss) {
-                    Image(dash: .custom("xmark-icon", bundle: .dashUIKit))
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 9, height: 9)
+                    XmarkIcon(color: Color.dash.toastText)
                         .padding(8)
                         .background(Circle().fill(Color.dash.whiteAlpha10))
                 }
-                .buttonStyle(PlainButtonStyle())
+                .buttonStyle(.plain)
             }
         }
         .padding(.leading, 12)
@@ -111,21 +114,21 @@ public struct Toast: View {
                 Color.dash.toastBackground
             }
         )
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .contentShape(Rectangle())
+        .clipShape(.rect(cornerRadius: 20))
+        .contentShape(.rect)
     }
 
     @ViewBuilder
     private var leadingIcon: some View {
-        // TODO: Replace with a custom animated icon for the loading style when assets are ready.
         if case .loading = style {
-            ProgressView()
-                .accentColor(Color.dash.toastText)
+            // Reuse the design-system spinner (12 white spokes at graduated opacity, 18×18).
+            // LoadingSpinner applies its own per-spoke opacity on top of toastText.
+            LoadingSpinner(size: 16, color: Color.dash.toastText)
         } else {
             Image(dash: .custom(style.iconName, bundle: .dashUIKit))
                 .resizable()
                 .scaledToFit()
-                .frame(width: 18, height: 18)
+                .frame(width: 16, height: 16)
         }
     }
 }
@@ -137,10 +140,10 @@ public struct Toast: View {
 @available(iOS 17, macOS 14, *)
 #Preview {
     VStack(spacing: 12) {
-        Toast(style: .warning, message: "Some coins are not available", onDismiss: {})
-        Toast(style: .info, message: "Heads up")
+        Toast(style: .warning, message: "Sgome coins are not available", onDismiss: {})
+        Toast(style: .info, message: "Heads up", onDismiss: {})
         Toast(style: .error, message: "Something went wrong", onDismiss: {})
-        Toast(style: .success, message: "Done")
+        Toast(style: .success, message: "Done", onDismiss: {})
         Toast(style: .copied, message: "Copied to clipboard")
         Toast(style: .loading, message: "Loading…")
     }

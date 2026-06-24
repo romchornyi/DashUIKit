@@ -1,12 +1,30 @@
+//
+//  Created by Roman Chornyi
+//  Copyright © 2026 Dash Core Group. All rights reserved.
+//
+//  Licensed under the MIT License (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//  https://opensource.org/licenses/MIT
+//
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
+//
+
 import SwiftUI
 
 // MARK: - XmarkIcon
 
 /// A code-drawn "✕" (close) icon. Mirrors the source SVG (9×9 viewBox, two diagonals
 /// inset from 0.75 to 7.75, round caps/joins). Scales cleanly to any `size`.
+@available(iOS 14, macOS 11, *)
 struct XmarkIcon: View {
     var size: CGFloat = 9
-    var color: Color = .primaryText
+    var color: Color = Color.dash.primaryText
     var lineWidth: CGFloat = 1.5
 
     var body: some View {
@@ -20,6 +38,7 @@ struct XmarkIcon: View {
 
 /// Two diagonal strokes forming an "✕". Endpoints are normalized from the 9-unit
 /// source viewBox (inset 0.75 → 7.75) so the cross keeps its proportions at any size.
+@available(iOS 14, macOS 11, *)
 private struct XmarkShape: Shape {
     private let insetRatio: CGFloat = 0.75 / 9
     private let extentRatio: CGFloat = 7.75 / 9
@@ -39,13 +58,18 @@ private struct XmarkShape: Shape {
     }
 }
 
+#if DEBUG
+
+@available(iOS 17, macOS 14, *)
 #Preview {
     VStack(spacing: 24) {
         XmarkIcon()
         XmarkIcon(size: 24, color: .white, lineWidth: 2)
             .padding(20)
-            .background(Color.dashBlue, in: .circle)
+            .background(Circle().fill(Color.dash.blue))
         XmarkIcon(size: 40, color: .red, lineWidth: 3)
     }
     .padding()
 }
+
+#endif

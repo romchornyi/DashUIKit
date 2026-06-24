@@ -79,7 +79,7 @@ public struct MenuItem: View {
         VStack(alignment: .leading, spacing: 1) {
             HStack(spacing: 6) {
                 Text(title)
-                    .font(Font.dash.subheadMedium)
+                    .dashFont(.subheadMedium)
                     .foregroundColor(Color.dash.primaryText)
 
                 if let icon = infoIcon {
@@ -90,7 +90,7 @@ public struct MenuItem: View {
 
             if let helpText {
                 Text(helpText)
-                    .font(Font.dash.footnote)
+                    .dashFont(.footnote)
                     .foregroundColor(Color.dash.secondaryText)
             }
         }
@@ -107,7 +107,7 @@ public struct MenuItem: View {
                 .labelsHidden()
         case .text(let value):
             Text(value)
-                .font(Font.dash.subhead)
+                .dashFont(.subhead)
                 .foregroundColor(Color.dash.secondaryText)
         case .button(let button):
             button
@@ -118,7 +118,7 @@ public struct MenuItem: View {
 
                 if dash != 0, dash != .max, dash != .min, let fiat {
                     Text(fiat)
-                        .font(Font.dash.footnote)
+                        .dashFont(.footnote)
                         .foregroundColor(Color.dash.secondaryText)
                 }
             }

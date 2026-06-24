@@ -139,7 +139,7 @@ private struct NavigationBarButtonStyle: ButtonStyle {
         leading: { NavigationBarElement.back.button { } },
         central: {
             Text("Title")
-                .font(.dash.subheadMedium)
+                .dashFont(.subheadMedium)
                 .foregroundColor(.dash.primaryText)
         }
     )
@@ -151,7 +151,7 @@ private struct NavigationBarButtonStyle: ButtonStyle {
         leading: { NavigationBarElement.back.button { } },
         central: {
             Text("Title")
-                .font(.dash.subheadMedium)
+                .dashFont(.subheadMedium)
                 .foregroundColor(.dash.primaryText)
         },
         trailing: { NavigationBarElement.info.button { } }
@@ -188,7 +188,7 @@ private struct NavigationBarButtonStyle: ButtonStyle {
     NavigationBar(
         central: {
             Text("Title")
-                .font(.dash.subheadMedium)
+                .dashFont(.subheadMedium)
                 .foregroundColor(.dash.primaryText)
         },
         trailing: { NavigationBarElement.close.button { } }

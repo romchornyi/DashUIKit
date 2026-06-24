@@ -85,7 +85,7 @@ public struct BottomSheet<Content: View>: View {
             },
             central: {
                 Text(title)
-                    .font(.dash.calloutMedium)
+                    .dashFont(.calloutMedium)
                     .foregroundColor(.dash.primaryText)
             },
             trailing: {
@@ -253,11 +253,11 @@ private struct SelfSizingSheetModifier: ViewModifier {
     ) {
         VStack(alignment: .leading, spacing: 16) {
             Text("Greedy content")
-                .font(.dash.calloutMedium)
+                .dashFont(.calloutMedium)
                 .foregroundColor(.dash.primaryText)
 
             Text("Fills the available sheet height.")
-                .font(.dash.body)
+                .dashFont(.body)
                 .foregroundColor(.dash.secondaryText)
         }
         .padding()
@@ -273,11 +273,11 @@ private struct SelfSizingSheetModifier: ViewModifier {
     ) {
         VStack(alignment: .leading, spacing: 12) {
             Text("Natural height content")
-                .font(.dash.calloutMedium)
+                .dashFont(.calloutMedium)
                 .foregroundColor(.dash.primaryText)
 
             Text("Use this with selfSizingSheet() so the sheet snaps to content height.")
-                .font(.dash.body)
+                .dashFont(.body)
                 .foregroundColor(.dash.secondaryText)
         }
         .padding()

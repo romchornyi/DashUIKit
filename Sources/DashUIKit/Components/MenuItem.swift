@@ -26,7 +26,6 @@ public enum MenuItemAccessory {
     case toggle(isOn: Binding<Bool>)
     case text(String)
     case button(DashButton)
-    case disclosure
     /// Dash amount with an optional pre-formatted fiat sub-line.
     /// The caller converts the fiat value via its own exchange infrastructure;
     /// the library only renders the string it receives.
@@ -112,9 +111,6 @@ public struct MenuItem: View {
                 .foregroundColor(Color.dash.secondaryText)
         case .button(let button):
             button
-        case .disclosure:
-            Image(dash: .system("chevron.right"))
-                .foregroundColor(Color.dash.tertiaryText)
         case .balance(let dash, let sign, let fiat):
             VStack(alignment: .trailing, spacing: 1) {
                 DashAmount(amount: dash, sign: sign)
@@ -192,15 +188,6 @@ public struct MenuItem: View {
 }
 
 @available(iOS 17, macOS 14, *)
-#Preview("Accessory: disclosure") {
-    MenuItem(
-        title: "About",
-        accessory: .disclosure
-    )
-    .padding(.horizontal)
-}
-
-@available(iOS 17, macOS 14, *)
 #Preview("Accessory: balance default (.negativeOnly)") {
     VStack(spacing: 0) {
         MenuItem(
@@ -247,31 +234,6 @@ public struct MenuItem: View {
         title: "Pending",
         accessory: .balance(dash: .max)
     )
-    .padding(.horizontal)
-}
-
-@available(iOS 17, macOS 14, *)
-#Preview("Leading icon + title + disclosure") {
-    VStack(spacing: 0) {
-        MenuItem(
-            leadingIcon: .system("bell"),
-            title: "Notifications",
-            accessory: .disclosure
-        )
-        Divider().padding(.leading, 50)
-        MenuItem(
-            leadingIcon: .system("lock.shield"),
-            title: "Security",
-            helpText: "Biometrics, PIN, and passphrase",
-            accessory: .disclosure
-        )
-        Divider().padding(.leading, 50)
-        MenuItem(
-            leadingIcon: .system("network"),
-            title: "Network",
-            accessory: .disclosure
-        )
-    }
     .padding(.horizontal)
 }
 

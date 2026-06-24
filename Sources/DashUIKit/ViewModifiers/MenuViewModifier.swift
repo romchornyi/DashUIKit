@@ -20,14 +20,16 @@ import SwiftUI
 @available(iOS 14, macOS 11, *)
 public struct MenuViewModifier: ViewModifier {
     var shadowRadius: CGFloat
+    var innerPadding: CGFloat
 
-    public init(shadowRadius: CGFloat = 10) {
+    public init(shadowRadius: CGFloat = 10, innerPadding: CGFloat = 6) {
         self.shadowRadius = shadowRadius
+        self.innerPadding = innerPadding
     }
 
     public func body(content: Content) -> some View {
         content
-            .padding(6)
+            .padding(innerPadding)
             .background(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(Color.dash.secondaryBackground)

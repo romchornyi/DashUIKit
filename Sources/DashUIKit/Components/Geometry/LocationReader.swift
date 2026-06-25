@@ -21,17 +21,17 @@ import SwiftUI
 /// Adds a transparent View and reads its center point.
 ///
 /// Adds a GeometryReader with 0px by 0px frame.
-public struct LocationReader: View {
+struct LocationReader: View {
 
     let coordinateSpace: CoordinateSpace
     let onChange: (_ location: CGPoint) -> Void
 
-    public init(coordinateSpace: CoordinateSpace, onChange: @escaping (_ location: CGPoint) -> Void) {
+    init(coordinateSpace: CoordinateSpace, onChange: @escaping (_ location: CGPoint) -> Void) {
         self.coordinateSpace = coordinateSpace
         self.onChange = onChange
     }
 
-    public var body: some View {
+    var body: some View {
         FrameReader(coordinateSpace: coordinateSpace) { frame in
             onChange(CGPoint(x: frame.midX, y: frame.midY))
         }
@@ -40,7 +40,7 @@ public struct LocationReader: View {
 }
 
 @available(iOS 14, macOS 11, *)
-public extension View {
+extension View {
 
     /// Get the center point of the View.
     ///

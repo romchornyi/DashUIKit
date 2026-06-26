@@ -36,17 +36,20 @@ public struct CoinSelector<Icon: View>: View {
 
     private let name: String
     private let code: String
+    private let network: String?
     private let trailing: CoinSelectorTrailing?
     private let icon: Icon
 
     public init(
         name: String,
         code: String,
+        network: String? = nil,
         trailing: CoinSelectorTrailing? = nil,
         @ViewBuilder icon: () -> Icon
     ) {
         self.name = name
         self.code = code
+        self.network = network
         self.trailing = trailing
         self.icon = icon()
     }
@@ -84,15 +87,24 @@ public struct CoinSelector<Icon: View>: View {
 
     @ViewBuilder
     private var trailingView: some View {
-        switch trailing {
-        case .halted:
+        if case .halted = trailing {
             haltedLabel
-        case .price(let value):
-            Text(value)
-                .dashFont(.caption1)
-                .foregroundColor(Color.dash.tertiaryText)
-        case .none:
-            EmptyView()
+        } else {
+            VStack(alignment: .trailing, spacing: 0) {
+                if case .price(let value) = trailing {
+                    Text(value)
+                        .dashFont(.caption1)
+                        .foregroundColor(Color.dash.primaryText)
+                        .lineLimit(1)
+                }
+                if let network {
+                    Text(network)
+                        .dashFont(.caption1)
+                        .foregroundColor(Color.dash.tertiaryText)
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+            }
         }
     }
 
@@ -120,13 +132,16 @@ struct CoinSelector_Previews: PreviewProvider {
 
     static var previews: some View {
         VStack(spacing: 0) {
-            CoinSelector(name: "Dash", code: "DASH", trailing: .price("USD 28.50")) {
+            CoinSelector(name: "Rune", code: "RUNE", network: "Maya", trailing: .price("$0.40")) {
                 iconPlaceholder
             }
-            CoinSelector(name: "Ethereum", code: "ETH", trailing: .price("USD 3,200.00")) {
+            CoinSelector(name: "Ethereum", code: "ETH", network: "NEAR", trailing: .price("$3,200.00")) {
                 iconPlaceholder
             }
-            CoinSelector(name: "Tether (Ethereum)", code: "USDT", trailing: .halted) {
+            CoinSelector(name: "USD Coin", code: "USDC", network: "Multiple", trailing: .price("$1.00")) {
+                iconPlaceholder
+            }
+            CoinSelector(name: "Tether", code: "USDT", trailing: .halted) {
                 iconPlaceholder
             }
             CoinSelector(name: "Bitcoin", code: "BTC") {

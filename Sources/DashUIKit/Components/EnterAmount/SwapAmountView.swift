@@ -16,6 +16,9 @@
 //
 
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 // MARK: - SwapAmountView
 
@@ -32,6 +35,7 @@ public struct SwapAmountView: View {
     public var showDashLogo: Bool = false
     public var showCurrencyButton: Bool = false
     public var onCurrencyTap: (() -> Void)? = nil
+    public var onPaste: (() -> Void)? = nil
 
     // MARK: Secondary row props (only used in animated dual-swap mode)
 
@@ -59,6 +63,7 @@ public struct SwapAmountView: View {
         showDashLogo: Bool = false,
         showCurrencyButton: Bool = false,
         onCurrencyTap: (() -> Void)? = nil,
+        onPaste: (() -> Void)? = nil,
         secondarySymbol: String? = nil,
         showSecondaryDashLogo: Bool = false,
         showSecondaryCurrencyButton: Bool = false,
@@ -73,6 +78,7 @@ public struct SwapAmountView: View {
         self.showDashLogo = showDashLogo
         self.showCurrencyButton = showCurrencyButton
         self.onCurrencyTap = onCurrencyTap
+        self.onPaste = onPaste
         self.secondarySymbol = secondarySymbol
         self.showSecondaryDashLogo = showSecondaryDashLogo
         self.showSecondaryCurrencyButton = showSecondaryCurrencyButton
@@ -136,6 +142,7 @@ public struct SwapAmountView: View {
             showDashLogo: showDashLogo,
             showCurrencyButton: showCurrencyButton,
             onCurrencyTap: onCurrencyTap,
+            onPaste: onPaste,
             secondarySymbol: secondarySymbol,
             showSecondaryDashLogo: showSecondaryDashLogo,
             showSecondaryCurrencyButton: showSecondaryCurrencyButton,
@@ -167,6 +174,8 @@ public struct SwapAmountView: View {
         }
         .scaleToFitWidth()
         .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
+        .dashPasteContextMenu(onPaste: onPaste)
     }
 
     // MARK: Amount content views
@@ -261,6 +270,7 @@ private struct AnimatedSwapLayout: View {
     let showDashLogo: Bool
     let showCurrencyButton: Bool
     let onCurrencyTap: (() -> Void)?
+    let onPaste: (() -> Void)?
     let secondarySymbol: String?
     let showSecondaryDashLogo: Bool
     let showSecondaryCurrencyButton: Bool
@@ -291,6 +301,7 @@ private struct AnimatedSwapLayout: View {
         showDashLogo: Bool,
         showCurrencyButton: Bool,
         onCurrencyTap: (() -> Void)?,
+        onPaste: (() -> Void)?,
         secondarySymbol: String?,
         showSecondaryDashLogo: Bool,
         showSecondaryCurrencyButton: Bool,
@@ -303,6 +314,7 @@ private struct AnimatedSwapLayout: View {
         self.showDashLogo = showDashLogo
         self.showCurrencyButton = showCurrencyButton
         self.onCurrencyTap = onCurrencyTap
+        self.onPaste = onPaste
         self.secondarySymbol = secondarySymbol
         self.showSecondaryDashLogo = showSecondaryDashLogo
         self.showSecondaryCurrencyButton = showSecondaryCurrencyButton
@@ -333,6 +345,8 @@ private struct AnimatedSwapLayout: View {
             .foregroundColor(iconForegroundColor)
             .scaleToFitWidth()
             .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .dashPasteContextMenu(onPaste: onPaste)
             .scaleEffect(scaleA, anchor: .center)
             .offset(y: offsetPrimary ? SwapAnimLayout.primaryOffset : SwapAnimLayout.secondaryOffset)
 
@@ -359,6 +373,8 @@ private struct AnimatedSwapLayout: View {
             .foregroundColor(fontPrimary ? Color.dash.tertiaryText : Color.dash.primaryText)
             .scaleToFitWidth()
             .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .dashPasteContextMenu(onPaste: onPaste)
             .scaleEffect(scaleB, anchor: .center)
             .offset(y: offsetPrimary ? SwapAnimLayout.secondaryOffset : SwapAnimLayout.primaryOffset)
         }
@@ -428,6 +444,33 @@ private struct AnimatedSwapLayout: View {
         guard let s = secondaryText, !s.isEmpty else { return "0" }
         if let first = s.first, first == "." || first == "," { return "0" + s }
         return s
+    }
+}
+
+// MARK: - Paste Context Menu
+
+@available(iOS 14, macOS 11, *)
+extension View {
+    /// Long-press to paste. Intentionally uses an `onLongPressGesture` and NOT `.contextMenu`:
+    /// `.contextMenu` adds a `_UIReparentingView` to the host's view hierarchy, which is
+    /// unsupported when the SwiftUI content is embedded in a `UIHostingController` (as Send /
+    /// Specify are) and silently breaks the gesture. The long-press pastes only when the
+    /// clipboard actually has a string.
+    @ViewBuilder
+    func dashPasteContextMenu(onPaste: (() -> Void)?) -> some View {
+        if let onPaste {
+            #if canImport(UIKit)
+            self.simultaneousGesture(
+                LongPressGesture(minimumDuration: 0.4).onEnded { _ in
+                    onPaste()
+                }
+            )
+            #else
+            self
+            #endif
+        } else {
+            self
+        }
     }
 }
 

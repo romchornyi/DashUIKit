@@ -41,6 +41,7 @@ internal struct DualSwapAmountView: View {
     let isCurrencySelectorHidden: Bool
     let onSwap: () -> Void
     let onSelectCurrency: () -> Void
+    let onPaste: (() -> Void)?
 
     var body: some View {
         SwapAmountView(
@@ -49,6 +50,7 @@ internal struct DualSwapAmountView: View {
             secondaryText: secondaryAmount,
             showDashLogo: primaryCurrency == .dash,
             showCurrencyButton: false,
+            onPaste: nil,
             secondarySymbol: secondaryCurrency.symbol,
             showSecondaryDashLogo: secondaryCurrency == .dash,
             showSecondaryCurrencyButton: !isCurrencySelectorHidden,
@@ -58,6 +60,7 @@ internal struct DualSwapAmountView: View {
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
         .onTapGesture { onSwap() }
+        .dashPasteContextMenu(onPaste: onPaste)
     }
 }
 

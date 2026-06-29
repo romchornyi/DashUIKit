@@ -40,6 +40,7 @@ public struct EnterAmountView: View {
     public var options: [CurrencyOption]
     public var onMax: (() -> Void)?
     public var onCurrencyTap: (() -> Void)?
+    public var onPaste: (() -> Void)?
 
     // MARK: Style selector
 
@@ -79,13 +80,15 @@ public struct EnterAmountView: View {
         selectedCurrency: Binding<CurrencyOption>,
         options: [CurrencyOption],
         onMax: (() -> Void)? = nil,
-        onCurrencyTap: (() -> Void)? = nil
+        onCurrencyTap: (() -> Void)? = nil,
+        onPaste: (() -> Void)? = nil
     ) {
         self._value = value
         self._selectedCurrency = selectedCurrency
         self.options = options
         self.onMax = onMax
         self.onCurrencyTap = onCurrencyTap
+        self.onPaste = onPaste
     }
 
     /// Initialises a `.dualSwap`-style view.
@@ -115,6 +118,7 @@ public struct EnterAmountView: View {
         onMax: (() -> Void)? = nil,
         onSwap: (() -> Void)? = nil,
         onCurrencyTap: (() -> Void)? = nil,
+        onPaste: (() -> Void)? = nil,
         onSelectInputType: ((String) -> Void)? = nil
     ) {
         self._value = .constant("")
@@ -132,6 +136,7 @@ public struct EnterAmountView: View {
         self.onMax = onMax
         self.onSwap = onSwap
         self.onCurrencyTap = onCurrencyTap
+        self.onPaste = onPaste
         self.onSelectInputType = onSelectInputType
     }
 
@@ -183,7 +188,8 @@ public struct EnterAmountView: View {
                 isPrimarySelected: isPrimarySelected,
                 isCurrencySelectorHidden: isCurrencySelectorHidden,
                 onSwap: onSwap ?? {},
-                onSelectCurrency: onCurrencyTap ?? {}
+                onSelectCurrency: onCurrencyTap ?? {},
+                onPaste: onPaste
             )
             .frame(maxWidth: .infinity)
 
@@ -227,7 +233,8 @@ public struct EnterAmountView: View {
             symbol: selectedCurrency.symbol,
             showDashLogo: selectedCurrency == .dash,
             showCurrencyButton: selectedCurrency.isFiat,
-            onCurrencyTap: onCurrencyTap
+            onCurrencyTap: onCurrencyTap,
+            onPaste: onPaste
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

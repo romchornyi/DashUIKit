@@ -126,7 +126,7 @@ public struct SwapAmountView: View {
     // MARK: Animated dual-swap layout
 
     /// Thin forwarder — instantiates `AnimatedSwapLayout` which owns the two-phase animation state.
-    /// Phase 1 (font/color/icon swap) snaps immediately; phase 2 (offset glide) follows after a delay.
+    /// Phase 1 (scale + opacity) runs in place; phase 2 (offset glide) follows after `scalePhase`.
     @ViewBuilder
     private func animatedBody(isPrimaryLarge: Bool) -> some View {
         AnimatedSwapLayout(
@@ -190,7 +190,7 @@ public struct SwapAmountView: View {
         }
     }
 
-    private func secondaryAmountView(font: Font) -> some View {
+    private func secondaryAmountView(font: Font, dashSize: CGSize? = nil) -> some View {
         HStack(spacing: 4) {
             if let sym = secondarySymbol, !sym.isEmpty {
                 Text(sym)
@@ -202,6 +202,9 @@ public struct SwapAmountView: View {
 
             if showSecondaryDashLogo {
                 Image(dash: .custom("enter-amount-dash", bundle: .dashUIKit))
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: dashSize?.width, height: dashSize?.height)
             }
         }
     }
@@ -229,22 +232,28 @@ public struct SwapAmountView: View {
 
 // MARK: - AnimatedSwapLayout
 
-/// Private stateful sub-view that drives the two-phase dual-swap animation.
+/// Stateful sub-view combining font switching with `scaleEffect` for the dual-swap animation.
 ///
-/// **Phase 1 — font/color/icon sizes** (`fontPrimary` state):
-/// Snaps immediately when `isPrimaryLarge` changes — no animation modifier applied.
-/// The row moving to the large slot gets `largeTitle` + full-brightness color + full-size icons;
-/// the row moving to the small slot gets `subhead` + dimmed color + small icons.
+/// **How it works:**
+/// When `isPrimaryLarge` flips, the animation runs in two phases:
 ///
-/// **Phase 2 — offset/opacity** (`offsetPrimary` state):
-/// After a `fontPhase` delay, the two rows glide to their new vertical positions via
-/// `withAnimation(.easeInOut(duration: offsetPhase))`.
+/// 1. **Font snap** (`fontPrimary`): both rows instantly switch to their target font
+///    (largeTitle bold ↔ subhead regular) and foreground color. Because the font size jumps
+///    at the boundary, each row's `scaleEffect` is immediately set to the **compensating**
+///    value — the ratio that makes the new font appear the same visual size as the old one
+///    (e.g. if A row just switched from largeTitle→subhead, set scaleA = 34/15 so subhead×2.267
+///    still looks 34pt). On the NEXT run loop, `scaleEffect` is animated to 1.0, producing a
+///    smooth grow/shrink with correct font weight throughout.
 ///
-/// Rapid re-taps are safe: each phase independently converges to the latest `isPrimaryLarge` value.
+/// 2. **Offset glide** (`offsetPrimary`): after `scalePhase` has elapsed, rows slide to their
+///    new vertical positions.
+///
+/// Result: correct bold weight in the large slot, correct regular weight in the small slot,
+/// smooth size transition via `scaleEffect` bridging the font snap.
 @available(iOS 14, macOS 11, *)
 private struct AnimatedSwapLayout: View {
 
-    // MARK: Content props (forwarded from SwapAmountView)
+    // MARK: Content props
 
     let amount: String
     let symbol: String?
@@ -256,21 +265,21 @@ private struct AnimatedSwapLayout: View {
     let showSecondaryDashLogo: Bool
     let showSecondaryCurrencyButton: Bool
     let onSecondaryCurrencyTap: (() -> Void)?
-    /// The desired target state driven by the host.
     let isPrimaryLarge: Bool
 
     // MARK: Phase state
 
-    /// Controls fonts, foreground colors, and icon sizes. Snaps to `isPrimaryLarge` immediately.
+    /// Drives font (largeTitle↔subhead) and foreground color. Snaps instantly — no animation.
     @State private var fontPrimary: Bool
-    /// Controls vertical offsets and opacity. Animates to `isPrimaryLarge` after `fontPhase` delay.
+    /// Per-row `scaleEffect` values. Set to compensating ratio on font snap, then animated to 1.0.
+    @State private var scaleA: CGFloat = 1.0
+    @State private var scaleB: CGFloat = 1.0
+    /// Controls `.offset`. Animated after `scalePhase` delay in phase 2.
     @State private var offsetPrimary: Bool
 
-    // MARK: Timing constants
+    // MARK: Timing
 
-    /// Seconds to wait after the font snap before starting the offset glide.
-    static let fontPhase: Double = 0.15
-    /// Duration of the offset glide easing.
+    static let scalePhase: Double = 0.18
     static let offsetPhase: Double = 0.2
 
     // MARK: Init
@@ -306,61 +315,79 @@ private struct AnimatedSwapLayout: View {
     // MARK: Body
 
     var body: some View {
-        // Phase 1 derives: font, foreground color, icon sizes
-        let aFont: Font         = fontPrimary ? Font.dash.largeTitle : Font.dash.subhead
-        let bFont: Font         = fontPrimary ? Font.dash.subhead    : Font.dash.largeTitle
-        let aColor: Color       = fontPrimary ? Color.dash.primaryText   : Color.dash.tertiaryText
-        let bColor: Color       = fontPrimary ? Color.dash.tertiaryText  : Color.dash.primaryText
-        let dashSize: CGSize    = fontPrimary ? .init(width: 19, height: 16) : .init(width: 10, height: 8)
-        let chevronSize: CGSize = fontPrimary ? .init(width: 5, height: 2.5) : .init(width: 10, height: 5)
+        // Font and dash-logo size both come from fontPrimary (snaps at animation boundary).
+        let aFont: Font = fontPrimary ? Font.dash.largeTitle : Font.dash.subhead
+        let bFont: Font = fontPrimary ? Font.dash.subhead : Font.dash.largeTitle
+        let dashSize = fontPrimary ? CGSize(width: 19, height: 16) : CGSize(width: 10, height: 8)
+        let chevronSize = fontPrimary ? CGSize(width: 5, height: 2.5) : CGSize(width: 10, height: 5)
+        let iconForegroundColor: Color = fontPrimary ? Color.dash.primaryText : Color.dash.tertiaryText
 
         ZStack(alignment: .center) {
             // A row — always carries the primary logical value
-            HStack(spacing: 6) {
-                amountContent(font: aFont, dashSize: dashSize)
-                    .foregroundColor(aColor)
-                if showCurrencyButton {
-                    Button { onCurrencyTap?() } label: {
-                        Image(dash: .custom("chevron-down-currency-select", bundle: .dashUIKit))
-                            .frame(width: 10, height: 5)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
+            rowContent(
+                font: aFont,
+                displayText: displayAmount,
+                showLogo: showDashLogo,
+                dashSize: dashSize
+            )
+            .foregroundColor(iconForegroundColor)
             .scaleToFitWidth()
             .frame(maxWidth: .infinity)
-            // Phase 2 drives offset + opacity
+            .scaleEffect(scaleA, anchor: .center)
             .offset(y: offsetPrimary ? SwapAnimLayout.primaryOffset : SwapAnimLayout.secondaryOffset)
-            .opacity(offsetPrimary ? 1.0 : SwapAnimLayout.secondaryOpacity)
 
             // B row — always carries the secondary logical value; shows optional chevron
             HStack(spacing: 6) {
-                secondaryContent(font: bFont, dashSize: dashSize)
+                rowContent(
+                    font: bFont,
+                    displayText: displaySecondary,
+                    symbol: secondarySymbol,
+                    showLogo: showSecondaryDashLogo,
+                    dashSize: dashSize
+                )
+
                 if showSecondaryCurrencyButton {
                     Button { onSecondaryCurrencyTap?() } label: {
                         Image(dash: .custom("chevron-down-currency-select", bundle: .dashUIKit))
                             .resizable()
-                            .scaledToFill()
+                            .scaledToFit()
                             .frame(width: chevronSize.width, height: chevronSize.height)
-                            .foregroundColor(Color.dash.gray400)
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .foregroundColor(bColor)
+            .foregroundColor(fontPrimary ? Color.dash.tertiaryText : Color.dash.primaryText)
             .scaleToFitWidth()
             .frame(maxWidth: .infinity)
-            // Phase 2 drives offset + opacity
+            .scaleEffect(scaleB, anchor: .center)
             .offset(y: offsetPrimary ? SwapAnimLayout.secondaryOffset : SwapAnimLayout.primaryOffset)
-            .opacity(offsetPrimary ? SwapAnimLayout.secondaryOpacity : 1.0)
         }
         .frame(height: SwapAnimLayout.containerHeight)
         .frame(maxWidth: .infinity)
         .onChange(of: isPrimaryLarge) { newValue in
-            // Phase 1: font/color/icon sizes snap immediately (no animation)
+            // Step 1: font/color snaps to target (no animation — font is not animatable)
             fontPrimary = newValue
-            // Phase 2: after the font phase settles, glide the offsets
-            DispatchQueue.main.asyncAfter(deadline: .now() + Self.fontPhase) {
+
+            // Step 2: immediately set compensating scaleEffect so visual size appears unchanged
+            // despite the font size jump. newValue=true means A just grew (subhead→largeTitle):
+            //   A comp = subhead/largeTitle = secondaryScale (largeTitle × 0.441 ≈ subhead visual)
+            //   B comp = largeTitle/subhead  = primaryScale  (subhead  × 2.267 ≈ largeTitle visual)
+            // newValue=false means A just shrank (largeTitle→subhead): ratios are reversed.
+            scaleA = newValue ? SwapAnimLayout.secondaryScale : SwapAnimLayout.primaryScale
+            scaleB = newValue ? SwapAnimLayout.primaryScale   : SwapAnimLayout.secondaryScale
+
+            // Step 3 (next run loop): animate scaleEffect to natural size 1.0.
+            // Deferring to the next run loop lets SwiftUI render the compensating scale first,
+            // so the animation truly starts from the compensating value.
+            DispatchQueue.main.async {
+                withAnimation(.easeInOut(duration: Self.scalePhase)) {
+                    scaleA = 1.0
+                    scaleB = 1.0
+                }
+            }
+
+            // Phase 2: offset glide after the scale phase completes
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.scalePhase) {
                 withAnimation(.easeInOut(duration: Self.offsetPhase)) {
                     offsetPrimary = newValue
                 }
@@ -368,30 +395,21 @@ private struct AnimatedSwapLayout: View {
         }
     }
 
-    // MARK: Row content helpers
+    // MARK: Row content helper
 
-    private func amountContent(font: Font, dashSize: CGSize) -> some View {
+    private func rowContent(
+        font: Font,
+        displayText: String,
+        symbol: String? = nil,
+        showLogo: Bool,
+        dashSize: CGSize
+    ) -> some View {
         HStack(spacing: 4) {
             if let sym = symbol, !sym.isEmpty {
                 Text(sym).font(font)
             }
-            Text(displayAmount).font(font)
-            if showDashLogo {
-                Image(dash: .custom("enter-amount-dash", bundle: .dashUIKit))
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: dashSize.width, height: dashSize.height)
-            }
-        }
-    }
-
-    private func secondaryContent(font: Font, dashSize: CGSize) -> some View {
-        HStack(spacing: 4) {
-            if let sym = secondarySymbol, !sym.isEmpty {
-                Text(sym).font(font)
-            }
-            Text(displaySecondary).font(font)
-            if showSecondaryDashLogo {
+            Text(displayText).font(font)
+            if showLogo {
                 Image(dash: .custom("enter-amount-dash", bundle: .dashUIKit))
                     .resizable()
                     .scaledToFit()
@@ -425,8 +443,12 @@ enum SwapAnimLayout {
     // Fixed container height prevents layout jumps during animation
     static let containerHeight: CGFloat = primaryHeight + slotSpacing + secondaryHeight  // 70
 
-    // Secondary slot renders at half the primary scale (body 17pt / largeTitle 34pt = 0.5)
-    static let secondaryScale: CGFloat = 0.5
+    // Scale factors between the two base fonts (largeTitle bold 34pt ↔ subhead regular 15pt).
+    // A row uses largeTitle as base; B row uses subhead as base.
+    // secondaryScale shrinks largeTitle to appear subhead-sized in the small slot.
+    // primaryScale grows subhead to appear largeTitle-sized in the large slot.
+    static let secondaryScale: CGFloat = 15.0 / 34.0  // ≈ 0.441
+    static let primaryScale: CGFloat = 34.0 / 15.0    // ≈ 2.267
     static let secondaryOpacity: CGFloat = 0.67
 
     // Offsets from ZStack center (= containerHeight / 2 = 35).

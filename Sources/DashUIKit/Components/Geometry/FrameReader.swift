@@ -17,83 +17,87 @@
 
 import SwiftUI
 
-@available(iOS 14, macOS 11, *)
-/// Adds a transparent View and reads its frame.
+// MARK: - FrameReader
+
+/// Publishes the live frame of whatever view it backs, resolved in `coordinateSpace`.
 ///
-/// Adds a GeometryReader with infinity frame.
+/// It paints nothing: a transparent, greedy overlay that forwards the resolved `CGRect`
+/// once on first layout and again on every subsequent change. Attach it through
+/// ``SwiftUI/View/readingFrame(coordinateSpace:onChange:)`` rather than building it directly.
+@available(iOS 14, macOS 11, *)
 struct FrameReader: View {
 
-    let coordinateSpace: CoordinateSpace
-    let onChange: (_ frame: CGRect) -> Void
+    private let coordinateSpace: CoordinateSpace
+    private let report: (CGRect) -> Void
 
-    init(coordinateSpace: CoordinateSpace, onChange: @escaping (_ frame: CGRect) -> Void) {
+    init(coordinateSpace: CoordinateSpace, onChange: @escaping (CGRect) -> Void) {
         self.coordinateSpace = coordinateSpace
-        self.onChange = onChange
+        self.report = onChange
     }
 
     var body: some View {
-        GeometryReader { geo in
-            Text("")
+        GeometryReader { proxy in
+            // Resolve once per layout pass and reuse for both the initial emit and the diff.
+            let frame = proxy.frame(in: coordinateSpace)
+
+            Color.clear
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .onAppear(perform: {
-                    onChange(geo.frame(in: coordinateSpace))
-                })
-                .onChange(of: geo.frame(in: coordinateSpace), perform: onChange)
+                .onAppear { report(frame) }
+                .onChange(of: frame, perform: report)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
+// MARK: - View sugar
+
 @available(iOS 14, macOS 11, *)
 public extension View {
 
-    /// Get the frame of the View.
-    ///
-    /// Adds a GeometryReader to the background of a View.
-    func readingFrame(coordinateSpace: CoordinateSpace = .global, onChange: @escaping (_ frame: CGRect) -> Void) -> some View {
+    /// Reports this view's frame — in `coordinateSpace` — as it appears and whenever it moves
+    /// or resizes. Installed as a transparent background so it never affects layout.
+    func readingFrame(
+        coordinateSpace: CoordinateSpace = .global,
+        onChange: @escaping (_ frame: CGRect) -> Void
+    ) -> some View {
         background(FrameReader(coordinateSpace: coordinateSpace, onChange: onChange))
     }
 }
+
+// MARK: - Preview
 
 #if DEBUG
 
 @available(iOS 14, macOS 11, *)
 struct FrameReader_Previews: PreviewProvider {
 
-    struct PreviewView: View {
-
-        @State private var yOffset: CGFloat = 0
+    private struct Demo: View {
+        @State private var topY: CGFloat = 0
 
         var body: some View {
             ScrollView(.vertical) {
-                VStack {
-                    Text("")
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 200)
-                        .cornerRadius(10)
-                        .background(Color.green)
-                        .padding()
-                        .readingFrame { frame in
-                            yOffset = frame.minY
-                        }
-
-                    ForEach(0..<30) { x in
-                        Text("")
+                VStack(spacing: 16) {
+                    ForEach(0..<24) { index in
+                        Color.green
                             .frame(maxWidth: .infinity)
-                            .frame(height: 200)
+                            .frame(height: 160)
                             .cornerRadius(10)
-                            .background(Color.green)
-                            .padding()
+                            .overlay(Text("\(index)"))
+                            // Track only the first tile's position within the named space.
+                            .readingFrame(coordinateSpace: .named("demo")) { frame in
+                                if index == 0 { topY = frame.minY }
+                            }
                     }
                 }
+                .padding()
             }
-            .coordinateSpace(name: "test")
-            .overlay(Text("Offset: \(yOffset)"))
+            .coordinateSpace(name: "demo")
+            .overlay(Text(String(format: "minY: %.1f", topY)).padding(), alignment: .top)
         }
     }
 
     static var previews: some View {
-        PreviewView()
+        Demo()
     }
 }
 

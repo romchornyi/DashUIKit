@@ -17,78 +17,99 @@
 
 import SwiftUI
 
-@available(iOS 14, macOS 11, *)
-/// Adds a transparent View and reads its center point.
+// MARK: - LocationReader
+
+/// Publishes the center point of whatever view it backs, resolved in `coordinateSpace`.
 ///
-/// Adds a GeometryReader with 0px by 0px frame.
+/// The point-sized sibling of ``FrameReader``: it collapses to a zero-sized probe and only
+/// emits the midpoint, which is all most scroll/position effects need. Reach for it through
+/// ``SwiftUI/View/readingLocation(coordinateSpace:onChange:)``.
+@available(iOS 14, macOS 11, *)
 struct LocationReader: View {
 
-    let coordinateSpace: CoordinateSpace
-    let onChange: (_ location: CGPoint) -> Void
+    private let coordinateSpace: CoordinateSpace
+    private let report: (CGPoint) -> Void
 
-    init(coordinateSpace: CoordinateSpace, onChange: @escaping (_ location: CGPoint) -> Void) {
+    init(coordinateSpace: CoordinateSpace, onChange: @escaping (CGPoint) -> Void) {
         self.coordinateSpace = coordinateSpace
-        self.onChange = onChange
+        self.report = onChange
     }
 
     var body: some View {
-        FrameReader(coordinateSpace: coordinateSpace) { frame in
-            onChange(CGPoint(x: frame.midX, y: frame.midY))
+        GeometryReader { proxy in
+            // Pinned to a 0×0 box, so the frame's midpoint collapses onto the probe's origin.
+            let center = proxy.frame(in: coordinateSpace).center
+
+            Color.clear
+                .onAppear { report(center) }
+                .onChange(of: center, perform: report)
         }
         .frame(width: 0, height: 0, alignment: .center)
     }
 }
 
+// MARK: - View sugar
+
 @available(iOS 14, macOS 11, *)
 extension View {
 
-    /// Get the center point of the View.
-    ///
-    /// Adds a 0px GeometryReader to the background of a View.
-    func readingLocation(coordinateSpace: CoordinateSpace = .global, onChange: @escaping (_ location: CGPoint) -> Void) -> some View {
+    /// Reports this view's center point — in `coordinateSpace` — on appear and on every change.
+    /// Installed as a zero-sized, transparent background so it never affects layout.
+    func readingLocation(
+        coordinateSpace: CoordinateSpace = .global,
+        onChange: @escaping (_ location: CGPoint) -> Void
+    ) -> some View {
         background(LocationReader(coordinateSpace: coordinateSpace, onChange: onChange))
     }
 }
+
+// MARK: - Helpers
+
+@available(iOS 14, macOS 11, *)
+private extension CGRect {
+    /// Geometric center of the rect.
+    var center: CGPoint { CGPoint(x: midX, y: midY) }
+}
+
+// MARK: - Preview
 
 #if DEBUG
 
 @available(iOS 14, macOS 11, *)
 struct LocationReader_Previews: PreviewProvider {
 
-    struct PreviewView: View {
-
-        @State private var yOffset: CGFloat = 0
+    private struct Demo: View {
+        @State private var headerCenterY: CGFloat = 0
 
         var body: some View {
             ScrollView(.vertical) {
-                VStack {
-                    Text("Hello, world!")
+                VStack(spacing: 16) {
+                    Text("Header")
                         .frame(maxWidth: .infinity)
-                        .frame(height: 200)
-                        .cornerRadius(10)
+                        .frame(height: 160)
                         .background(Color.green)
-                        .padding()
-                        .readingLocation { location in
-                            yOffset = location.y
+                        .cornerRadius(10)
+                        .readingLocation(coordinateSpace: .named("demo")) { point in
+                            headerCenterY = point.y
                         }
 
-                    ForEach(0..<30) { x in
-                        Text("")
+                    ForEach(0..<24) { index in
+                        Color.green.opacity(0.4)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 200)
+                            .frame(height: 160)
                             .cornerRadius(10)
-                            .background(Color.green)
-                            .padding()
+                            .overlay(Text("\(index)"))
                     }
                 }
+                .padding()
             }
-            .coordinateSpace(name: "test")
-            .overlay(Text("Offset: \(yOffset)"))
+            .coordinateSpace(name: "demo")
+            .overlay(Text(String(format: "header midY: %.1f", headerCenterY)).padding(), alignment: .top)
         }
     }
 
     static var previews: some View {
-        PreviewView()
+        Demo()
     }
 }
 

@@ -17,15 +17,25 @@
 
 import SwiftUI
 
+// MARK: - ScrollViewWithOnScrollChanged
+
+/// A drop-in `ScrollView` that reports its content offset as the user scrolls — useful for
+/// collapsing headers, scroll-driven shadows, parallax, etc., without depending on iOS 17's
+/// `onScrollGeometryChange`.
+///
+/// The trick: a zero-sized ``LocationReader`` rides at the very top of the content inside a
+/// private named coordinate space. As the content slides, the probe's position within that
+/// space is exactly the scroll offset, which is forwarded through `onScrollChanged`.
 @available(iOS 14, macOS 11, *)
 public struct ScrollViewWithOnScrollChanged<Content: View>: View {
 
-    let axes: Axis.Set
-    let showsIndicators: Bool
-    let content: Content
-    let onScrollChanged: (_ origin: CGPoint) -> Void
+    private let axes: Axis.Set
+    private let showsIndicators: Bool
+    private let content: Content
+    private let report: (CGPoint) -> Void
 
-    @State private var coordinateSpaceID: String = UUID().uuidString
+    /// A per-instance coordinate-space name, so stacked scroll views never read each other's probe.
+    @State private var spaceName = UUID().uuidString
 
     public init(
         _ axes: Axis.Set = .vertical,
@@ -36,49 +46,54 @@ public struct ScrollViewWithOnScrollChanged<Content: View>: View {
         self.axes = axes
         self.showsIndicators = showsIndicators
         self.content = content()
-        self.onScrollChanged = onScrollChanged
+        self.report = onScrollChanged
     }
 
     public var body: some View {
         ScrollView(axes, showsIndicators: showsIndicators) {
-            LocationReader(coordinateSpace: .named(coordinateSpaceID), onChange: onScrollChanged)
+            offsetProbe
             content
         }
-        .coordinateSpace(name: coordinateSpaceID)
+        .coordinateSpace(name: spaceName)
+    }
+
+    /// Top-of-content marker whose location within `spaceName` mirrors the scroll offset.
+    private var offsetProbe: some View {
+        LocationReader(coordinateSpace: .named(spaceName), onChange: report)
     }
 }
+
+// MARK: - Preview
 
 #if DEBUG
 
 @available(iOS 14, macOS 11, *)
 struct ScrollViewWithOnScrollChanged_Previews: PreviewProvider {
 
-    struct PreviewView: View {
-
-        @State private var yPosition: CGFloat = 0
+    private struct Demo: View {
+        @State private var offsetY: CGFloat = 0
 
         var body: some View {
             ScrollViewWithOnScrollChanged {
-                VStack {
-                    ForEach(0..<30) { x in
-                        Text("x: \(x)")
+                VStack(spacing: 16) {
+                    ForEach(0..<24) { index in
+                        Color.red.opacity(0.4)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 200)
+                            .frame(height: 160)
                             .cornerRadius(10)
-                            .background(Color.red)
-                            .padding()
-                            .id(x)
+                            .overlay(Text("Row \(index)"))
                     }
                 }
+                .padding()
             } onScrollChanged: { origin in
-                yPosition = origin.y
+                offsetY = origin.y
             }
-            .overlay(Text("Offset: \(yPosition)"))
+            .overlay(Text(String(format: "offset.y: %.1f", offsetY)).padding(), alignment: .top)
         }
     }
 
     static var previews: some View {
-        PreviewView()
+        Demo()
     }
 }
 

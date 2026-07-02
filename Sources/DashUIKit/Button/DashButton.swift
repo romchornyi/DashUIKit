@@ -123,7 +123,7 @@ public enum DashButtonStyle {
 @available(iOS 14, macOS 11, *)
 public struct DashButton: View {
 
-    public var text: String = "Label"
+    public var text: String? = "Label"
     public var leadingIcon: DashIconSource? = nil
     public var trailingIcon: DashIconSource? = nil
 
@@ -136,7 +136,7 @@ public struct DashButton: View {
     public var action: () -> Void = {}
 
     public init(
-        text: String,
+        text: String? = nil,
         leadingIcon: DashIconSource? = nil,
         trailingIcon: DashIconSource? = nil,
         isEnabled: Bool = true,
@@ -200,7 +200,7 @@ public struct DashButton: View {
 
             if isLoading {
                 ProgressView()
-            } else {
+            } else if let text {
                 Text(text)
                     .font(size.fontSize)
                     .fontWeight(.semibold)
